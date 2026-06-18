@@ -1,100 +1,53 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Login - Pastimes</title>
-    <style>
-        body {
-            font-family: Arial;
-            background: #F5F5F0;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-        }
-        .card {
-            background: white;
-            padding: 30px;
-            width: 300px;
-        }
-        input, button {
-            width: 100%;
-            padding: 10px;
-            margin: 8px 0;
-        }
-        button {
-            background: #E8491E;
-            color: white;
-            border: none;
-        }
-        .admin-btn {
-            background: #333;
-        }
-    </style>
-</head>
-
-<body>
-
-<div class="card">
-    <h2>Welcome Back</h2>
-
-   <?php
-include 'DbConnect.php';
+<?php
 session_start();
+include 'DBConnect.php';
+$error = '';
+$sticky_username = '';
 
-$error = "";
+if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+  $username = trim($_POST['username']);
+  $password = trim($_POST['password']);
+  $hashed = md5($password);
+  $sticky_username = $username;
 
-if ($_SERVER["REQUEST_METHOD"] == "POST") {
+  $result = mysqli_query($conn, "SELECT * FROM tblUser WHERE username='$username' AND password='$hashed'");
 
-    $username = trim($_POST['username']);
-    $email = trim($_POST['email']);
-    $password = trim($_POST['password']);
-    $hashed = md5($password);
-
-    $query = "SELECT * FROM tbluser 
-              WHERE username='$username' 
-              AND email='$email' 
-              AND password='$hashed'";
-
-    $result = mysqli_query($conn, $query);
-
-    if (!$result) {
-        die("Query error: " . mysqli_error($conn));
-    }
-
-    if (mysqli_num_rows($result) > 0) {
-
-        $user = mysqli_fetch_assoc($result);
-
-        $_SESSION['user_id'] = $user['user_id'];
-        $_SESSION['user_type'] = $user['user_type'];
-
-        //REDIRECT TO SHOP
-        header("Location: index.php");
-        exit();
-
+  if (mysqli_num_rows($result) > 0) {
+    $user = mysqli_fetch_assoc($result);
+    if ($user['seller_verified'] == 0) {
+      $error = 'Your account is pending admin approval.';
     } else {
-        $error = "Invalid login details.";
+      $_SESSION['user_id'] = $user['user_id'];
+      $_SESSION['full_name'] = $user['full_name'];
+      $_SESSION['user_type'] = $user['user_type'];
+      $_SESSION['seller_verified'] = $user['seller_verified'];
+      if ($user['user_type'] == 'admin') {
+        header('Location: admin.php'); exit();
+      } else {
+        header('Location: index.php'); exit();
+      }
     }
+  } else {
+    $error = 'Invalid username or password.';
+  }
 }
 ?>
-
-    <?php if (!empty($error)) echo "<p style='color:red;'>" . htmlspecialchars($error) . "</p>"; ?>
-
-    <form method="POST">
-        <input type="text" name="username" placeholder="Username" required>
-        <input type="password" name="password" placeholder="Password" required>
-        <input type="email" name="email" placeholder="Email" required>
-
-        <button type="submit">Sign In</button>
-    </form>
-
-    <!--ADMIN PAGE REDIRECT BUTTON--> 
-    <form action="admin.php" method="GET">
-        <button type="submit" class="admin-btn">Admin Login</button>
-    </form>
-
-    <a href="register.php">Create account</a>
+<!DOCTYPE html><html><head><title>Login - Pastimes</title><link rel='stylesheet' href='css/style.css'></head><body>
+<?php include 'nav.php'; ?>
+<div class='auth-container'>
+  <?php if(isset($_SESSION['full_name'])): ?>
+    <div class='success'>User <?php echo $_SESSION['full_name']; ?> is logged in</div>
+  <?php endif; ?>
+  <h1 class='auth-title'>Welcome Back</h1>
+  <p class='auth-sub'>Sign in to your Pastimes account</p>
+  <?php if($error): ?><div class='error'><?php echo $error; ?></div><?php endif; ?>
+  <form method='POST'>
+    <label style='font-size:14px;font-weight:600;display:block;margin-bottom:6px;'>Username</label>
+    <input type='text' name='username' placeholder='Enter your username' value='<?php echo $sticky_username; ?>' required>
+    <label style='font-size:14px;font-weight:600;display:block;margin-bottom:6px;'>Password</label>
+    <input type='password' name='password' placeholder='Enter your password' required>
+    <button type='submit' class='btn-primary' style='width:100%;padding:14px;margin-top:8px;'>Sign In</button>
+  </form>
+  <div class='auth-link'>Don't have an account? <a href='register.php'>Create one</a></div>
 </div>
-
-</body>
-</html>
+</body></html>
